@@ -70,7 +70,7 @@ function rewriteLine(line, desiredLabel = "𝙉𝙀𝙓𝙕𝙊") {
 
 app.get("/", async (req, res) => {
   try {
-    const desiredLabel = (req.query.label || "𝙉𝙀𝙓𝙕𝙊").toString();
+    const desiredLabel = (req.query.nexzo || "𝙉𝙀𝙓𝙕𝙊").toString();
 
     const upstream = "https://dev1.irdevs.sbs/";
     const { data } = await axios.get(upstream, { responseType: "text" });
