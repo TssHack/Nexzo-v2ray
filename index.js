@@ -5,12 +5,51 @@ import axios from "axios";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Regex تشخیص پرچم (جفت حروف Regional Indicator)
+// ===============================
+// 🎫 بخش لایسنس
+// ===============================
+async function checkLicense(key, clientIp) {
+  try {
+    // JSON لایسنس‌ها
+    const { data } = await axios.get("https://dev.ehsanjs.ir/data.json");
+    const licenses = data.licenses || [];
+    const lic = licenses.find((l) => l.key === key);
+
+    if (!lic) return { ok: false, msg: "❌ License not found" };
+    if (lic.status !== "active") return { ok: false, msg: "❌ License inactive" };
+    if (new Date(lic.expire) < new Date())
+      return { ok: false, msg: "❌ License expired" };
+
+    // محدودیت آی‌پی
+    if (lic.limit_ip && lic.limit_ip.length > 0) {
+      if (!lic.limit_ip.includes(clientIp)) {
+        return { ok: false, msg: `❌ IP not allowed (${clientIp})` };
+      }
+    }
+
+    // محدودیت تعداد استفاده
+    if (lic.max_usage && lic.used >= lic.max_usage) {
+      return { ok: false, msg: "❌ License usage limit exceeded" };
+    }
+
+    return { ok: true, msg: "✅ License valid", lic };
+  } catch (e) {
+    return { ok: false, msg: "❌ License check failed" };
+  }
+}
+
+// ===============================
+// 🏴 Regex تشخیص پرچم (جفت حروف Regional Indicator)
+// ===============================
 const FLAG_RE = /([\u{1F1E6}-\u{1F1FF}]{2})/gu;
 
 // کمک‌کننده‌ها
 const safeDecodeURIComponent = (s) => {
-  try { return decodeURIComponent(s.replace(/\+/g, "%20")); } catch { return s; }
+  try {
+    return decodeURIComponent(s.replace(/\+/g, "%20"));
+  } catch {
+    return s;
+  }
 };
 const safeEncodeURIComponent = (s) => encodeURIComponent(s);
 
@@ -68,8 +107,21 @@ function rewriteLine(line, desiredLabel = "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊") {
   return newBeforeHash + "#" + newTag;
 }
 
+// ===============================
+// 📡 روتر اصلی
+// ===============================
 app.get("/", async (req, res) => {
   try {
+    // 📌 بررسی لایسنس
+    const licenseKey = req.query.license;
+    const clientIp =
+      req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
+
+    const licCheck = await checkLicense(licenseKey, clientIp);
+    if (!licCheck.ok) {
+      return res.status(403).send(licCheck.msg);
+    }
+
     const desiredLabel = (req.query.nexzo || "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊").toString();
     const subName = (req.query.sub || "MySubscription").toString(); // نام سابسکریپشن
 
