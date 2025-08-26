@@ -25,13 +25,15 @@ const b64Decode = (b64) => {
 };
 const b64Encode = (txt) => Buffer.from(txt, "utf8").toString("base64");
 
-const buildLabel = (sourceText, desired = "NEXZO") => {
+const buildLabel = (sourceText, desired = "𝙉𝙀𝙓𝙕𝙊
+") => {
   const flags = (sourceText || "").match(FLAG_RE) || [];
   const prefix = flags.length ? flags.join(" ") + " " : "";
   return (prefix + desired).trim();
 };
 
-function rewriteLine(line, desiredLabel = "𝙀𝙃𝙎𝘼𝙉") {
+function rewriteLine(line, desiredLabel = "𝙉𝙀𝙓𝙕𝙊
+") {
   if (!line || !line.includes("://")) return line;
 
   const hashPos = line.indexOf("#");
@@ -70,7 +72,8 @@ function rewriteLine(line, desiredLabel = "𝙀𝙃𝙎𝘼𝙉") {
 
 app.get("/", async (req, res) => {
   try {
-    const desiredLabel = (req.query.label || "𝙀𝙃𝙎𝘼𝙉").toString();
+    const desiredLabel = (req.query.label || "𝙉𝙀𝙓𝙕𝙊
+").toString();
 
     const upstream = "https://dev1.irdevs.sbs/";
     const { data } = await axios.get(upstream, { responseType: "text" });
