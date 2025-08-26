@@ -25,13 +25,13 @@ const b64Decode = (b64) => {
 };
 const b64Encode = (txt) => Buffer.from(txt, "utf8").toString("base64");
 
-const buildLabel = (sourceText, desired = "𝙉𝙀𝙓𝙕𝙊") => {
+const buildLabel = (sourceText, desired = "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊") => {
   const flags = (sourceText || "").match(FLAG_RE) || [];
   const prefix = flags.length ? flags.join(" ") + " " : "";
   return (prefix + desired).trim();
 };
 
-function rewriteLine(line, desiredLabel = "𝙉𝙀𝙓𝙕𝙊") {
+function rewriteLine(line, desiredLabel = "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊") {
   if (!line || !line.includes("://")) return line;
 
   const hashPos = line.indexOf("#");
@@ -70,7 +70,8 @@ function rewriteLine(line, desiredLabel = "𝙉𝙀𝙓𝙕𝙊") {
 
 app.get("/", async (req, res) => {
   try {
-    const desiredLabel = (req.query.nexzo || "𝙉𝙀𝙓𝙕𝙊").toString();
+    const desiredLabel = (req.query.nexzo || "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊").toString();
+    const subName = (req.query.sub || "MySubscription").toString(); // نام سابسکریپشن
 
     const upstream = "https://dev1.irdevs.sbs/";
     const { data } = await axios.get(upstream, { responseType: "text" });
@@ -84,8 +85,15 @@ app.get("/", async (req, res) => {
       return rewriteLine(ln, desiredLabel);
     });
 
+    // اضافه کردن نام سابسکریپشن به‌عنوان کامنت اول لیست
+    out.unshift(`# Subscription: ${subName}`);
+
+    // تبدیل کل خروجی به Base64
+    const plainText = out.join(newline);
+    const base64Text = Buffer.from(plainText, "utf8").toString("base64");
+
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.send(out.join(newline));
+    res.send(base64Text);
   } catch (err) {
     console.error(err?.response?.status, err?.message);
     res.status(502).send("خطا در دریافت/پردازش پاسخ مبدا");
@@ -95,5 +103,3 @@ app.get("/", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
-
-
