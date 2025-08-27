@@ -124,12 +124,18 @@ app.get("/", async (req, res) => {
 
     const desiredLabel = (req.query.nexzo || "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊").toString();
     const subName = (req.query.sub || "MySubscription").toString(); // نام سابسکریپشن
+    const limit = parseInt(req.query.limit || "0", 10); // تعداد سرویس‌ها
 
     const upstream = "https://dev1.irdevs.sbs/";
     const { data } = await axios.get(upstream, { responseType: "text" });
 
     const newline = data.includes("\r\n") ? "\r\n" : "\n";
-    const lines = String(data).split(/\r?\n/);
+    let lines = String(data).split(/\r?\n/);
+
+    // اعمال محدودیت تعداد سرویس‌ها
+    if (limit > 0) {
+      lines = lines.slice(0, limit);
+    }
 
     const out = lines.map((ln) => {
       if (!ln.trim()) return ln;
@@ -155,3 +161,4 @@ app.get("/", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
+
