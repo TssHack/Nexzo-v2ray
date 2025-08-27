@@ -70,7 +70,7 @@ const buildLabel = (sourceText, desired = "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊") =
   return (prefix + desired).trim();
 };
 
-function rewriteLine(line, desiredLabel = "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊") {
+function rewriteLine(line, desiredLabel = "𝙑𝙋𝙉 𝙉𝙀𝙓𝙊") {
   if (!line || !line.includes("://")) return line;
 
   const hashPos = line.indexOf("#");
@@ -112,6 +112,20 @@ function rewriteLine(line, desiredLabel = "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊") {
 // ===============================
 app.get("/", async (req, res) => {
   try {
+    // 📌 بررسی User-Agent
+    const ua = (req.headers["user-agent"] || "").toLowerCase();
+    const isV2rayApp =
+      ua.includes("v2ray") ||
+      ua.includes("nekobox") ||
+      ua.includes("shadowrocket") ||
+      ua.includes("clash") ||
+      ua.includes("sing-box");
+
+    if (!isV2rayApp) {
+      // ➡️ اگر از مرورگر باز شد → ریدایرکت به صفحه کاربر
+      return res.redirect("https://dev.ehsanjs.ir/user");
+    }
+
     // 📌 بررسی لایسنس
     const licenseKey = req.query.license;
     const clientIp =
@@ -122,31 +136,34 @@ app.get("/", async (req, res) => {
       return res.status(403).send(licCheck.msg);
     }
 
+    // 📌 ورودی‌ها
     const desiredLabel = (req.query.nexzo || "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊").toString();
-    const subName = (req.query.sub || "MySubscription").toString(); // نام سابسکریپشن
-    const limit = parseInt(req.query.limit || "0", 10); // تعداد سرویس‌ها
+    const subName = (req.query.sub || "MySubscription").toString();
+    const limit = parseInt(req.query.limit || "0", 10);
 
+    // 📌 دریافت لیست اصلی
     const upstream = "https://dev1.irdevs.sbs/";
     const { data } = await axios.get(upstream, { responseType: "text" });
 
     const newline = data.includes("\r\n") ? "\r\n" : "\n";
     let lines = String(data).split(/\r?\n/);
 
-    // اعمال محدودیت تعداد سرویس‌ها
+    // محدود کردن تعداد سرویس‌ها
     if (limit > 0) {
       lines = lines.slice(0, limit);
     }
 
+    // بازنویسی خطوط
     const out = lines.map((ln) => {
       if (!ln.trim()) return ln;
       if (!ln.includes("#") && !ln.startsWith("vmess://")) return ln;
       return rewriteLine(ln, desiredLabel);
     });
 
-    // اضافه کردن نام سابسکریپشن به‌عنوان کامنت اول لیست
+    // اضافه کردن نام سابسکریپشن
     out.unshift(`# Subscription: ${subName}`);
 
-    // تبدیل کل خروجی به Base64
+    // Base64 خروجی
     const plainText = out.join(newline);
     const base64Text = Buffer.from(plainText, "utf8").toString("base64");
 
@@ -158,7 +175,9 @@ app.get("/", async (req, res) => {
   }
 });
 
+// ===============================
+// 🚀 شروع سرور
+// ===============================
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
-
