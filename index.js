@@ -39,6 +39,85 @@ async function checkLicense(key, clientIp) {
 }
 
 // ===============================
+// 🔍 تشخیص دقیق User-Agent
+// ===============================
+function isVPNClient(userAgent, headers) {
+  if (!userAgent) return false;
+  
+  const ua = userAgent.toLowerCase();
+  
+  // کلاینت‌های VPN معروف
+  const vpnClients = [
+    // V2Ray کلاینت‌ها
+    'v2ray', 'v2rayng', 'v2rayn', 'v2rayng/', 'v2rayn/',
+    
+    // کلاینت‌های موبایل
+    'shadowrocket', 'quantumult', 'quantumult-x', 'pharos',
+    'kitsunebi', 'pepi', 'shadowlink', 'potatso',
+    
+    // کلاینت‌های دسکتاپ
+    'clash', 'clashx', 'clash for windows', 'clash-verge',
+    'v2rayu', 'qv2ray', 'nekoray', 'nekobox',
+    
+    // کلاینت‌های اندروید
+    'sing-box', 'surfboard', 'shadowsocks',
+    'ssray', 'v2free', 'bifrostv',
+    
+    // کلاینت‌های iOS
+    'loon', 'surge', 'stash', 'choc',
+    
+    // سایر کلاینت‌ها
+    'hiddify', 'matsuri', 'fair-vpn',
+    'streisand', 'outline', 'shadowsocksr'
+  ];
+  
+  // بررسی مستقیم User-Agent
+  const hasVPNClient = vpnClients.some(client => ua.includes(client));
+  if (hasVPNClient) return true;
+  
+  // بررسی header های خاص کلاینت‌های VPN
+  const subscription_userinfo = headers['subscription-userinfo'];
+  const profile_web_page_url = headers['profile-web-page-url'];
+  
+  if (subscription_userinfo || profile_web_page_url) return true;
+  
+  // بررسی الگوهای خاص User-Agent
+  const vpnPatterns = [
+    /CFNetwork.*Darwin/i,  // iOS apps
+    /okhttp/i,            // Android apps
+    /Apache-HttpClient/i,  // Java based clients
+    /Go-http-client/i,    // Go based clients
+    /curl/i,              // Command line tools
+    /wget/i,              // Command line tools
+  ];
+  
+  // چک کردن مرورگرهای معمولی (باید redirect شوند)
+  const browserPatterns = [
+    /mozilla.*firefox/i,
+    /mozilla.*chrome/i,
+    /mozilla.*safari/i,
+    /mozilla.*edge/i,
+    /opera/i,
+    /webkit/i
+  ];
+  
+  // اگر مرورگر معمولی است
+  const isBrowser = browserPatterns.some(pattern => pattern.test(ua)) && 
+                   !vpnPatterns.some(pattern => pattern.test(ua));
+  
+  if (isBrowser) return false;
+  
+  // اگر pattern VPN دارد
+  const hasVPNPattern = vpnPatterns.some(pattern => pattern.test(ua));
+  if (hasVPNPattern) return true;
+  
+  // اگر User-Agent خیلی کوتاه یا خالی است (معمولاً کلاینت‌های VPN)
+  if (!userAgent || userAgent.trim().length < 10) return true;
+  
+  return false;
+}
+
+// ===============================
 // 🏴 Regex تشخیص پرچم (جفت حروف Regional Indicator)
 // ===============================
 const FLAG_RE = /([\u{1F1E6}-\u{1F1FF}]{2})/gu;
@@ -70,7 +149,7 @@ const buildLabel = (sourceText, desired = "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊") =
   return (prefix + desired).trim();
 };
 
-function rewriteLine(line, desiredLabel = "𝙑𝙋𝙉 𝙉𝙀𝙓𝙊") {
+function rewriteLine(line, desiredLabel = "𝙑𝙋𝙉 𝙉𝙀𝙓𝙕𝙊") {
   if (!line || !line.includes("://")) return line;
 
   const hashPos = line.indexOf("#");
@@ -112,16 +191,15 @@ function rewriteLine(line, desiredLabel = "𝙑𝙋𝙉 𝙉𝙀𝙓𝙊") {
 // ===============================
 app.get("/", async (req, res) => {
   try {
-    // 📌 بررسی User-Agent
-    const ua = (req.headers["user-agent"] || "").toLowerCase();
-    const isV2rayApp =
-      ua.includes("v2ray") ||
-      ua.includes("nekobox") ||
-      ua.includes("shadowrocket") ||
-      ua.includes("clash") ||
-      ua.includes("sing-box");
-
-    if (!isV2rayApp) {
+    // 📌 بررسی بهتر User-Agent
+    const userAgent = req.headers["user-agent"] || "";
+    const isVPN = isVPNClient(userAgent, req.headers);
+    
+    // Debug log (می‌توانید حذف کنید)
+    console.log(`User-Agent: ${userAgent}`);
+    console.log(`Is VPN Client: ${isVPN}`);
+    
+    if (!isVPN) {
       // ➡️ اگر از مرورگر باز شد → ریدایرکت به صفحه کاربر
       return res.redirect("https://dev.ehsanjs.ir/user");
     }
